@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #e5ddd5; }
+        #chat-area { display: none; }
+        #messages { height: 300px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        input { padding: 10px; width: 70%; }
+    </style>
+</head>
+<body>
+    <div id="login-area">
+        <input type="text" id="user" placeholder="Tên tạm thời">
+        <input type="text" id="code" placeholder="Mã bí mật">
+        <button onclick="join()">Vào Chat</button>
+    </div>
+
+    <div id="chat-area">
+        <div id="messages"></div>
+        <input type="text" id="msg" placeholder="Nhập tin nhắn...">
+        <button onclick="send()">Gửi</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        function join() {
+            socket.emit('join-room', { 
+                username: document.getElementById('user').value, 
+                code: document.getElementById('code').value 
+            });
+        }
+        socket.on('login-success', () => {
+            document.getElementById('login-area').style.display = 'none';
+            document.getElementById('chat-area').style.display = 'block';
+        });
+        socket.on('login-error', (m) => alert(m));
+        
+        function send() {
+            socket.emit('send-chat', document.getElementById('msg').value);
+            document.getElementById('msg').value = '';
+        }
+        socket.on('chat-message', (data) => {
+            document.getElementById('messages').innerHTML += `<p><b>${data.user}:</b> ${data.msg}</p>`;
+        });
+    </script>
+</body>
+</html>

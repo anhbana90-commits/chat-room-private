@@ -5,7 +5,7 @@ const io = require('socket.io')(http);
 
 app.use(express.static('public'));
 
-const SECRET_CODE = "2026"; // Đây là mã bạn sẽ đưa cho bạn bè
+const SECRET_CODE = "36"; // Đây là mã bạn sẽ đưa cho bạn bè
 
 io.on('connection', (socket) => {
     socket.on('join-room', (data) => {

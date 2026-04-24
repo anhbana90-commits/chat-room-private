@@ -2,47 +2,77 @@
 <html>
 <head>
     <title>Chat Room</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial; padding: 20px; background: #e5ddd5; }
-        #chat-area { display: none; }
-        #messages { height: 300px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-        input { padding: 10px; width: 70%; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background: #e5ddd5; margin: 0; }
+        #login-area { max-width: 400px; margin: 50px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #chat-area { display: none; max-width: 600px; margin: 0 auto; }
+        
+        /* Khung tin nhắn */
+        #messages { height: 70vh; overflow-y: auto; background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #ddd; }
+        #messages p { background: #f1f0f0; padding: 8px 12px; border-radius: 15px; margin: 5px 0; width: fit-content; max-width: 85%; line-height: 1.4; }
+        #messages p b { color: #075e54; display: block; font-size: 0.8em; }
+
+        /* Khung nhập liệu */
+        .input-group { display: flex; gap: 8px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; flex: 1; }
+        button { padding: 10px 20px; background: #25d366; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #128c7e; }
+        
+        .login-input { width: 100%; box-sizing: border-box; margin-bottom: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
+
     <div id="login-area">
-        <input type="text" id="user" placeholder="Tên tạm thời">
-        <input type="text" id="code" placeholder="Mã bí mật">
-        <button onclick="join()">Vào Chat</button>
+        <h2 style="text-align: center; color: #075e54;">Phòng Chat Bí Mật</h2>
+        <form onsubmit="join(); return false;">
+            <input type="text" id="user" class="login-input" placeholder="Tên của bạn" required>
+            <input type="text" id="code" class="login-input" placeholder="Mã bí mật (2026)" required>
+            <button type="submit" style="width: 100%;">Vào Chat</button>
+        </form>
     </div>
 
     <div id="chat-area">
         <div id="messages"></div>
-        <input type="text" id="msg" placeholder="Nhập tin nhắn...">
-        <button onclick="send()">Gửi</button>
+        <form class="input-group" onsubmit="send(); return false;">
+            <input type="text" id="msg" placeholder="Nhập tin nhắn..." autocomplete="off">
+            <button type="submit">Gửi</button>
+        </form>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        const msgDiv = document.getElementById('messages');
+
         function join() {
-            socket.emit('join-room', { 
-                username: document.getElementById('user').value, 
-                code: document.getElementById('code').value 
-            });
+            const user = document.getElementById('user').value;
+            const code = document.getElementById('code').value;
+            if(user && code) {
+                socket.emit('join-room', { username: user, code: code });
+            }
         }
+
         socket.on('login-success', () => {
             document.getElementById('login-area').style.display = 'none';
             document.getElementById('chat-area').style.display = 'block';
         });
+
         socket.on('login-error', (m) => alert(m));
-        
+
         function send() {
-            socket.emit('send-chat', document.getElementById('msg').value);
-            document.getElementById('msg').value = '';
+            const msgInput = document.getElementById('msg');
+            if (msgInput.value.trim() !== "") {
+                socket.emit('send-chat', msgInput.value);
+                msgInput.value = '';
+            }
         }
+
         socket.on('chat-message', (data) => {
-            document.getElementById('messages').innerHTML += `<p><b>${data.user}:</b> ${data.msg}</p>`;
+            msgDiv.innerHTML += `<p><b>${data.user}</b>${data.msg}</p>`;
+            // Tự động cuộn xuống tin nhắn mới nhất
+            msgDiv.scrollTop = msgDiv.scrollHeight;
         });
     </script>
 </body>

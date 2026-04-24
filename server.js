@@ -8,18 +8,24 @@ app.use(express.static('public'));
 const SECRET_CODE = "36"; 
 
 io.on('connection', (socket) => {
-    // 1. Xử lý khi vào phòng
+    
+    // 1. Xử lý khi người dùng yêu cầu vào phòng
     socket.on('join-room', (data) => {
         if (data.code === SECRET_CODE) {
             socket.join(SECRET_CODE);
             socket.username = data.username || "Ẩn danh";
+            
+            // Báo cho người đó vào thành công
             socket.emit('login-success', { name: socket.username });
+
+            // THÔNG BÁO CHO CẢ PHÒNG: Có người vừa vào
+            io.to(SECRET_CODE).emit('system-message', `${socket.username} đã tham gia phòng`);
         } else {
             socket.emit('login-error', 'Sai mã bí mật!');
         }
     });
 
-    // 2. Xử lý gửi tin nhắn
+    // 2. Xử lý khi gửi tin nhắn chat
     socket.on('send-chat', (message) => {
         const rooms = Array.from(socket.rooms);
         const room = rooms.find(r => r === SECRET_CODE);
@@ -32,17 +38,15 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. Xử lý khi đang soạn tin (MỚI THÊM)
+    // 3. Xử lý trạng thái đang soạn tin
     socket.on('typing', () => {
         const rooms = Array.from(socket.rooms);
         const room = rooms.find(r => r === SECRET_CODE);
         if (room) {
-            // Gửi thông báo cho mọi người TRỪ người đang gõ
             socket.to(room).emit('display-typing', { user: socket.username });
         }
     });
 
-    // 4. Xử lý khi ngừng soạn tin (MỚI THÊM)
     socket.on('stop-typing', () => {
         const rooms = Array.from(socket.rooms);
         const room = rooms.find(r => r === SECRET_CODE);
@@ -50,7 +54,15 @@ io.on('connection', (socket) => {
             socket.to(room).emit('hide-typing');
         }
     });
-}); 
+
+    // 4. Xử lý khi ai đó thoát (tắt tab, mất mạng)
+    socket.on('disconnect', () => {
+        if (socket.username) {
+            // Thông báo cho những người còn lại
+            io.to(SECRET_CODE).emit('system-message', `${socket.username} đã rời phòng`);
+        }
+    });
+});
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {

@@ -1,68 +1,101 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Messenger v2 - Private Search</title>
+    <title>Messenger v2.5 - Custom Rooms</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 10px; background: #f0f2f5; margin: 0; }
         .container { max-width: 450px; margin: 15px auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #lobby-area, #chat-area { display: none; }
+        #lobby-area, #chat-area, #create-form { display: none; }
 
         /* Nút Chat Nhanh */
         .quick-btn { 
-            width: 100%; padding: 18px; background: #0084ff; color: white; border: none; 
+            width: 100%; padding: 16px; background: #0084ff; color: white; border: none; 
             border-radius: 12px; font-size: 1.1em; font-weight: bold; cursor: pointer;
-            margin-bottom: 30px; transition: 0.2s;
+            margin-bottom: 20px; transition: 0.2s;
         }
-        .quick-btn:active { transform: scale(0.97); }
-
-        /* Ô tìm kiếm phòng */
-        .search-box { background: #f7f8fa; padding: 20px; border-radius: 12px; border: 1px solid #e4e6eb; }
-        .search-box h4 { margin-top: 0; color: #1c1e21; }
         
-        .input-group { display: flex; gap: 8px; margin-top: 10px; }
-        input { padding: 12px 15px; border: 1px solid #ddd; border-radius: 25px; flex: 1; font-size: 16px; outline: none; }
-        button.action-btn { padding: 10px 25px; background: #24b354; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; }
+        /* Box chức năng */
+        .box { background: #f7f8fa; padding: 15px; border-radius: 12px; border: 1px solid #e4e6eb; margin-bottom: 15px; }
+        .box h4 { margin-top: 0; color: #1c1e21; margin-bottom: 10px; }
 
-        /* Khung chat */
+        .input-group { display: flex; gap: 8px; margin-top: 10px; }
+        input, select { padding: 12px; border: 1px solid #ddd; border-radius: 8px; flex: 1; font-size: 15px; outline: none; }
+        
+        button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-create { background: #24b354; color: white; width: 100%; margin-top: 10px; }
+        .btn-search { background: #1877f2; color: white; }
+        
+        /* Form tạo phòng */
+        .form-row { margin-bottom: 10px; }
+        .form-row label { display: block; font-size: 0.85em; color: #65676b; margin-bottom: 4px; }
+
+        /* Chat */
         #messages { height: 60vh; overflow-y: auto; background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 10px; display: flex; flex-direction: column; }
-        .msg-box { padding: 10px 14px; border-radius: 18px; margin: 4px 0; max-width: 85%; font-size: 0.95em; line-height: 1.4; }
+        .msg-box { padding: 10px 14px; border-radius: 18px; margin: 4px 0; max-width: 85%; font-size: 0.95em; }
         .other-msg { align-self: flex-start; background: #e4e6eb; }
         .my-msg { align-self: flex-end; background: #0084ff; color: white; }
-        .exit-btn { background: #f02849; width: 100%; margin-top: 15px; padding: 12px; color: white; border: none; border-radius: 10px; font-weight: bold; }
+        .exit-btn { background: #f02849; width: 100%; margin-top: 15px; color: white; }
     </style>
 </head>
 <body>
 
     <div id="login-area" class="container">
-        <h2 style="text-align:center; color:#0084ff;">Messenger v2</h2>
-        <input type="text" id="username" style="width:100%; box-sizing:border-box;" placeholder="Tên của bạn...">
-        <button class="quick-btn" style="margin-top:20px;" onclick="goToLobby()">Bắt đầu</button>
+        <h2 style="text-align:center; color:#0084ff;">Messenger v2.5</h2>
+        <input type="text" id="username" style="width:100%; box-sizing:border-box;" placeholder="Tên hiển thị của bạn...">
+        <button class="quick-btn" style="margin-top:20px;" onclick="goToLobby()">Bắt đầu ngay</button>
     </div>
 
     <div id="lobby-area" class="container">
-        <button class="quick-btn" onclick="joinRoom('36')">
-            ⚡ VÀO PHÒNG CHAT NHANH (36)
-        </button>
+        <button class="quick-btn" onclick="joinQuickChat()">⚡ VÀO CHAT NHANH (Phòng 36)</button>
 
-        <div class="search-box">
-            <h4>Tìm phòng bí mật</h4>
-            <p style="font-size: 0.8em; color: #65676b;">Nhập mã phòng để tìm hoặc tạo mới:</p>
+        <div class="box">
+            <h4>Tùy chọn phòng</h4>
+            <button class="btn-create" onclick="toggleCreateForm()">+ Tạo phòng riêng của bạn</button>
+            
+            <div id="create-form" style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 15px;">
+                <div class="form-row">
+                    <label>Mã tìm kiếm (Viết liền, không dấu):</label>
+                    <input type="text" id="new-room-id" placeholder="VD: lop12a1">
+                </div>
+                <div class="form-row">
+                    <label>Tên hiển thị phòng:</label>
+                    <input type="text" id="new-room-name" placeholder="VD: Nhóm Học Tập">
+                </div>
+                <div class="form-row">
+                    <label>Mật khẩu (Để trống nếu muốn tự do):</label>
+                    <input type="password" id="new-room-pass" placeholder="Mật khẩu...">
+                </div>
+                <div class="form-row">
+                    <label>Giới hạn số người:</label>
+                    <select id="new-room-limit">
+                        <option value="5">5 người</option>
+                        <option value="10" selected>10 người</option>
+                        <option value="20">20 người</option>
+                        <option value="50">50 người</option>
+                    </select>
+                </div>
+                <button class="btn-create" onclick="createNewRoom()">Xác nhận tạo phòng</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h4>Tìm phòng của bạn bè</h4>
             <div class="input-group">
-                <input type="text" id="search-id" placeholder="Nhập mã (VD: khang99)">
-                <button class="action-btn" onclick="searchRoom()">Tìm</button>
+                <input type="text" id="search-id" placeholder="Nhập mã phòng...">
+                <button class="btn-search" onclick="searchRoom()">Tìm</button>
             </div>
         </div>
     </div>
 
     <div id="chat-area" class="container">
-        <h3 id="room-title" style="margin:0; padding-bottom:10px; border-bottom:1px solid #eee;">Phòng</h3>
+        <h3 id="room-title" style="margin:0; padding-bottom:10px; border-bottom:1px solid #eee; color:#0084ff;">Phòng</h3>
         <div id="messages"></div>
         <form class="input-group" onsubmit="send(); return false;">
             <input type="text" id="msg" placeholder="Nhập tin nhắn..." autocomplete="off">
-            <button class="action-btn" type="submit">Gửi</button>
+            <button class="btn-search" type="submit">Gửi</button>
         </form>
-        <button class="exit-btn" onclick="location.reload()">Thoát</button>
+        <button class="exit-btn" onclick="location.reload()">Rời khỏi phòng</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -72,37 +105,58 @@
 
         function goToLobby() {
             myUsername = document.getElementById('username').value.trim();
-            if(!myUsername) return alert("Nhập tên bạn nhé!");
+            if(!myUsername) return alert("Vui lòng nhập tên!");
             document.getElementById('login-area').style.display = 'none';
             document.getElementById('lobby-area').style.display = 'block';
         }
 
-        // Hàm tìm kiếm phòng
+        function toggleCreateForm() {
+            const form = document.getElementById('create-form');
+            form.style.display = (form.style.display === 'block') ? 'none' : 'block';
+        }
+
+        // --- HÀM TẠO PHÒNG ---
+        function createNewRoom() {
+            const id = document.getElementById('new-room-id').value.trim();
+            const name = document.getElementById('new-room-name').value.trim();
+            const pass = document.getElementById('new-room-pass').value;
+            const limit = document.getElementById('new-room-limit').value;
+
+            if(!id || !name) return alert("Vui lòng điền mã và tên phòng!");
+
+            socket.emit('create-room', { 
+                roomID: id, roomName: name, roomPass: pass, 
+                roomLimit: limit, username: myUsername 
+            });
+        }
+
+        // --- HÀM TÌM PHÒNG ---
         function searchRoom() {
             const id = document.getElementById('search-id').value.trim();
-            if(!id) return alert("Hãy nhập mã phòng!");
+            if(!id) return alert("Nhập mã phòng cần tìm!");
             socket.emit('check-room-exists', id);
         }
 
-        // Lắng nghe kết quả tìm kiếm từ Server
         socket.on('room-exists-status', (data) => {
             if(data.exists) {
-                joinRoom(data.id);
-            } else {
-                if(confirm("Mã '" + data.id + "' chưa có phòng. Bạn có muốn tạo luôn không?")) {
-                    socket.emit('create-room', { 
-                        roomID: data.id, 
-                        roomName: "Phòng " + data.id, 
-                        roomPass: "", 
-                        username: myUsername 
-                    });
+                let p = "";
+                if(data.hasPass) {
+                    p = prompt("Phòng này có mật khẩu 🔒. Nhập pass:");
+                    if(p === null) return;
                 }
+                socket.emit('join-room', { roomID: data.id, pass: p, username: myUsername });
+            } else {
+                alert("Không tìm thấy phòng nào có mã này!");
             }
         });
 
-        function joinRoom(id) {
-            socket.emit('join-room', { roomID: id, pass: "", username: myUsername });
+        function joinQuickChat() {
+            socket.emit('join-room', { roomID: '36', pass: "", username: myUsername });
         }
+
+        socket.on('create-success', (id) => {
+            socket.emit('join-room', { roomID: id, pass: document.getElementById('new-room-pass').value, username: myUsername });
+        });
 
         socket.on('login-success', (data) => {
             document.getElementById('lobby-area').style.display = 'none';
@@ -111,9 +165,9 @@
             document.getElementById('messages').innerHTML = "";
         });
 
-        socket.on('create-success', (id) => joinRoom(id));
+        socket.on('error-msg', (m) => alert(m));
 
-        // Logic gửi tin nhắn
+        // Logic chat
         const msgDiv = document.getElementById('messages');
         function send() {
             const input = document.getElementById('msg');
@@ -125,11 +179,7 @@
 
         socket.on('chat-message', (data) => {
             const isMe = data.id === socket.id;
-            msgDiv.innerHTML += `
-                <div class="msg-box ${isMe ? 'my-msg' : 'other-msg'}">
-                    ${!isMe ? `<b style="font-size:0.7em;">${data.user}</b><br>` : ''}
-                    ${data.msg}
-                </div>`;
+            msgDiv.innerHTML += `<div class="msg-box ${isMe ? 'my-msg' : 'other-msg'}">${!isMe ? `<b style="font-size:0.7em;">${data.user}</b><br>` : ''}${data.msg}</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
         });
 
@@ -137,8 +187,6 @@
             msgDiv.innerHTML += `<div style="text-align:center; font-size:0.75em; color:#888; margin:10px 0;">${m}</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
         });
-
-        socket.on('error-msg', (m) => alert(m));
     </script>
 </body>
 </html>

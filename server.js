@@ -5,7 +5,7 @@ const io = require('socket.io')(http);
 
 app.use(express.static('public'));
 
-const SECRET_CODE = "36"; // Đây là mã bạn sẽ đưa cho bạn bè
+const SECRET_CODE = "36"; // Mã bí mật của bạn
 
 io.on('connection', (socket) => {
     socket.on('join-room', (data) => {
@@ -18,18 +18,23 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Tìm đoạn này trong server.js và thay thế:
-socket.on('send-chat', (message) => {
-    const room = Array.from(socket.rooms)[1]; 
-    if (room) {
-        io.to(room).emit('chat-message', {
-            user: socket.username,
-            msg: message,
-            id: socket.id // Thêm dòng này để phân biệt người gửi
-        });
-    }
-});
+    socket.on('send-chat', (message) => {
+        // Cách lấy phòng an toàn hơn cho Render
+        const rooms = Array.from(socket.rooms);
+        const room = rooms.find(r => r === SECRET_CODE);
+        
+        if (room) {
+            io.to(room).emit('chat-message', {
+                user: socket.username,
+                msg: message,
+                id: socket.id 
+            });
+        }
+    });
+}); // <--- Đây là dấu đóng ngoặc bạn bị thiếu
 
-http.listen(3000, () => {
-    console.log('Server dang chay tai: http://localhost:3000');
+// Render cần dòng này để chạy trên internet
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+    console.log('Server dang chay tai port: ' + PORT);
 });

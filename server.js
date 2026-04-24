@@ -6,7 +6,6 @@ const io = require('socket.io')(http);
 app.use(express.static('public'));
 
 // CƠ SỞ DỮ LIỆU PHÒNG
-// Mình thêm sẵn mã "36" để bạn bấm nút là vào được ngay
 let allRooms = {
     "sanh-chung": { 
         name: "Sảnh Chung", 
@@ -27,7 +26,7 @@ let allRooms = {
 io.on('connection', (socket) => {
     console.log('Có kết nối mới:', socket.id);
 
-    // 1. Kiểm tra phòng tồn tại (Cho ô tìm kiếm mã phòng)
+    // 1. Kiểm tra phòng tồn tại (Dùng cho ô tìm kiếm)
     socket.on('check-room-exists', (id) => {
         const room = allRooms[id];
         if (room) {
@@ -41,7 +40,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 2. Xử lý Tạo phòng mới
+    // 2. Xử lý Tạo phòng mới (Đã tối ưu giới hạn 1-99)
     socket.on('create-room', (data) => {
         const { roomID, roomName, roomPass, roomLimit, username } = data;
         
@@ -49,11 +48,16 @@ io.on('connection', (socket) => {
             return socket.emit('error-msg', 'Mã phòng này đã tồn tại!');
         }
 
+        // Kiểm tra giới hạn số người từ 1 đến 99
+        let finalLimit = parseInt(roomLimit) || 10;
+        if (finalLimit < 1) finalLimit = 1;
+        if (finalLimit > 99) finalLimit = 99;
+
         socket.username = username || "Ẩn danh";
         allRooms[roomID] = {
             name: roomName || "Phòng bí mật",
             pass: roomPass || "",
-            limit: parseInt(roomLimit) || 10,
+            limit: finalLimit,
             owner: socket.id,
             users: []
         };
@@ -67,14 +71,21 @@ io.on('connection', (socket) => {
         const room = allRooms[roomID];
 
         if (!room) return socket.emit('error-msg', 'Phòng không tồn tại!');
-        if (room.pass !== "" && room.pass !== pass) return socket.emit('error-msg', 'Sai mật khẩu!');
-        if (room.users.length >= room.limit) return socket.emit('error-msg', 'Phòng đầy!');
+        
+        // Kiểm tra mật khẩu
+        if (room.pass !== "" && room.pass !== pass) {
+            return socket.emit('error-msg', 'Sai mật khẩu phòng!');
+        }
+        
+        // Kiểm tra giới hạn người dùng
+        if (room.users.length >= room.limit) {
+            return socket.emit('error-msg', `Phòng đã đầy! (Tối đa ${room.limit} người)`);
+        }
 
         socket.username = username || "Ẩn danh";
         socket.currentRoom = roomID;
         socket.join(roomID);
         
-        // Thêm user vào danh sách nếu chưa có
         if (!room.users.includes(socket.id)) {
             room.users.push(socket.id);
         }
@@ -98,16 +109,20 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. Thông báo đang gõ
+    // 5. Xử lý Trạng thái đang gõ
     socket.on('typing', () => {
-        if (socket.currentRoom) socket.to(socket.currentRoom).emit('display-typing', { user: socket.username });
+        if (socket.currentRoom) {
+            socket.to(socket.currentRoom).emit('display-typing', { user: socket.username });
+        }
     });
 
     socket.on('stop-typing', () => {
-        if (socket.currentRoom) socket.to(socket.currentRoom).emit('hide-typing');
+        if (socket.currentRoom) {
+            socket.to(socket.currentRoom).emit('hide-typing');
+        }
     });
 
-    // 6. Xử lý Thoát
+    // 6. Xử lý Thoát/Mất kết nối
     socket.on('disconnect', () => {
         const roomID = socket.currentRoom;
         if (roomID && allRooms[roomID]) {
@@ -115,7 +130,7 @@ io.on('connection', (socket) => {
             room.users = room.users.filter(id => id !== socket.id);
             io.to(roomID).emit('system-message', `${socket.username} đã rời phòng.`);
 
-            // Chỉ xóa phòng nếu không phải Sảnh chung hoặc Phòng 36
+            // Tự động xóa phòng trống (trừ phòng hệ thống)
             if (room.users.length === 0 && roomID !== "sanh-chung" && roomID !== "36") {
                 delete allRooms[roomID];
             }
@@ -123,8 +138,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Cấu hình Port cho Render
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-    console.log('Server dang chay tai port: ' + PORT);
+    console.log('Server đang chạy tại port: ' + PORT);
 });

@@ -18,13 +18,16 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('send-chat', (msg) => {
-        // Chỉ gửi tin nhắn cho những người cùng nhập đúng mã 2026
-        io.to(SECRET_CODE).emit('chat-message', {
+    // Tìm đoạn này trong server.js và thay thế:
+socket.on('send-chat', (message) => {
+    const room = Array.from(socket.rooms)[1]; 
+    if (room) {
+        io.to(room).emit('chat-message', {
             user: socket.username,
-            msg: msg
+            msg: message,
+            id: socket.id // Thêm dòng này để phân biệt người gửi
         });
-    });
+    }
 });
 
 http.listen(3000, () => {

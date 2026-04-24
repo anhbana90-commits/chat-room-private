@@ -67,13 +67,8 @@
                     <input type="password" id="new-room-pass" placeholder="Mật khẩu...">
                 </div>
                 <div class="form-row">
-                    <label>Giới hạn số người:</label>
-                    <select id="new-room-limit">
-                        <option value="5">5 người</option>
-                        <option value="10" selected>10 người</option>
-                        <option value="20">20 người</option>
-                        <option value="50">50 người</option>
-                    </select>
+                    <label>Giới hạn số người (1 - 99):</label>
+                    <input type="number" id="new-room-limit" min="1" max="99" value="10">
                 </div>
                 <button class="btn-create" onclick="createNewRoom()">Xác nhận tạo phòng</button>
             </div>
@@ -120,13 +115,23 @@
             const id = document.getElementById('new-room-id').value.trim();
             const name = document.getElementById('new-room-name').value.trim();
             const pass = document.getElementById('new-room-pass').value;
-            const limit = document.getElementById('new-room-limit').value;
+            
+            // Xử lý giá trị giới hạn số người
+            let limitInput = document.getElementById('new-room-limit');
+            let limit = parseInt(limitInput.value);
+
+            // Kiểm tra ràng buộc từ 1-99
+            if (isNaN(limit) || limit < 1) limit = 1;
+            if (limit > 99) limit = 99;
 
             if(!id || !name) return alert("Vui lòng điền mã và tên phòng!");
 
             socket.emit('create-room', { 
-                roomID: id, roomName: name, roomPass: pass, 
-                roomLimit: limit, username: myUsername 
+                roomID: id, 
+                roomName: name, 
+                roomPass: pass, 
+                roomLimit: limit, 
+                username: myUsername 
             });
         }
 

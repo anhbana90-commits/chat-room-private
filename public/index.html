@@ -8,18 +8,55 @@
         #login-area { max-width: 400px; margin: 50px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         #chat-area { display: none; max-width: 600px; margin: 0 auto; }
         
-        /* Khung tin nhắn */
-        #messages { height: 70vh; overflow-y: auto; background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #ddd; }
-        #messages p { background: #f1f0f0; padding: 8px 12px; border-radius: 15px; margin: 5px 0; width: fit-content; max-width: 85%; line-height: 1.4; }
-        #messages p b { color: #075e54; display: block; font-size: 0.8em; }
+        /* Khung tin nhắn - Cực kỳ quan trọng để chia trái phải */
+        #messages { 
+            height: 75vh; 
+            overflow-y: auto; 
+            background: #fff; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-bottom: 10px; 
+            border: 1px solid #ddd;
+            display: flex;
+            flex-direction: column; /* Xếp tin nhắn theo hàng dọc */
+        }
+
+        /* Định dạng chung bong bóng chat */
+        .msg-box { 
+            padding: 8px 12px; 
+            border-radius: 15px; 
+            margin: 5px 0; 
+            max-width: 80%; 
+            line-height: 1.4; 
+            word-wrap: break-word;
+            position: relative;
+        }
+        .msg-box b { display: block; font-size: 0.75em; margin-bottom: 2px; }
+
+        /* Tin nhắn của người khác (BÊN TRÁI) */
+        .other-msg { 
+            align-self: flex-start; 
+            background: #f1f0f0; 
+            color: black;
+            border-bottom-left-radius: 2px;
+        }
+        .other-msg b { color: #075e54; }
+
+        /* Tin nhắn của MÌNH (BÊN PHẢI) */
+        .my-msg { 
+            align-self: flex-end; 
+            background: #dcf8c6; 
+            color: black;
+            border-bottom-right-radius: 2px;
+        }
+        .my-msg b { color: #128c7e; text-align: right; }
 
         /* Khung nhập liệu */
         .input-group { display: flex; gap: 8px; }
         input { padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; flex: 1; }
         button { padding: 10px 20px; background: #25d366; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #128c7e; }
         
-        .login-input { width: 100%; box-sizing: border-box; margin-bottom: 10px; border-radius: 5px; }
+        .login-input { width: 100%; box-sizing: border-box; margin-bottom: 10px; border-radius: 5px; padding: 10px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -28,7 +65,7 @@
         <h2 style="text-align: center; color: #075e54;">Phòng Chat Bí Mật</h2>
         <form onsubmit="join(); return false;">
             <input type="text" id="user" class="login-input" placeholder="Tên của bạn" required>
-            <input type="text" id="code" class="login-input" placeholder="Mã bí mật (2026)" required>
+            <input type="text" id="code" class="login-input" placeholder="Mã bí mật" required>
             <button type="submit" style="width: 100%;">Vào Chat</button>
         </form>
     </div>
@@ -70,8 +107,19 @@
         }
 
         socket.on('chat-message', (data) => {
-            msgDiv.innerHTML += `<p><b>${data.user}</b>${data.msg}</p>`;
-            // Tự động cuộn xuống tin nhắn mới nhất
+            // So sánh ID người gửi từ server với ID cá nhân của socket hiện tại
+            const isMe = data.id === socket.id;
+            const msgClass = isMe ? 'my-msg' : 'other-msg';
+
+            // Tạo bong bóng chat
+            const html = `
+                <div class="msg-box ${msgClass}">
+                    <b>${data.user}</b>
+                    ${data.msg}
+                </div>
+            `;
+            
+            msgDiv.innerHTML += html;
             msgDiv.scrollTop = msgDiv.scrollHeight;
         });
     </script>

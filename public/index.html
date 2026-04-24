@@ -111,4 +111,47 @@
                 socket.emit('send-chat', msgInput.value);
                 msgInput.value = '';
                 
-                // Khi gửi xong
+                // Khi gửi xong thì dừng báo đang soạn tin ngay
+                isTyping = false;
+                socket.emit('stop-typing');
+            }
+        }
+
+        // Bắt sự kiện gõ phím để báo "đang soạn tin"
+        msgInput.addEventListener('keypress', () => {
+            if (!isTyping) {
+                isTyping = true;
+                socket.emit('typing');
+            }
+            
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => {
+                isTyping = false;
+                socket.emit('stop-typing');
+            }, 2500); // Sau 2.5 giây không gõ sẽ mất thông báo
+        });
+
+        socket.on('chat-message', (data) => {
+            const isMe = data.id === socket.id;
+            const msgClass = isMe ? 'my-msg' : 'other-msg';
+            const html = `
+                <div class="msg-box ${msgClass}">
+                    <b>${data.user}</b>
+                    ${data.msg}
+                </div>
+            `;
+            msgDiv.innerHTML += html;
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+        });
+
+        // Lắng nghe tín hiệu soạn tin từ người khác
+        socket.on('display-typing', (data) => {
+            typingStatus.innerText = `${data.user} đang soạn tin...`;
+        });
+
+        socket.on('hide-typing', () => {
+            typingStatus.innerText = '';
+        });
+    </script>
+</body>
+</html>

@@ -5,10 +5,18 @@ const io = require('socket.io')(http);
 
 app.use(express.static('public'));
 
-// CƠ SỞ DỮ LIỆU PHÒNG: Lưu trữ tất cả phòng đang hoạt động
+// CƠ SỞ DỮ LIỆU PHÒNG
+// Mình thêm sẵn mã "36" để bạn bấm nút là vào được ngay
 let allRooms = {
     "sanh-chung": { 
         name: "Sảnh Chung", 
+        pass: "", 
+        limit: 99, 
+        owner: "system", 
+        users: [] 
+    },
+    "36": { 
+        name: "Phòng Chat Nhanh (36)", 
         pass: "", 
         limit: 99, 
         owner: "system", 
@@ -19,59 +27,67 @@ let allRooms = {
 io.on('connection', (socket) => {
     console.log('Có kết nối mới:', socket.id);
 
-    // Gửi danh sách phòng cho người mới vào web
-    socket.emit('update-room-list', allRooms);
+    // 1. Kiểm tra phòng tồn tại (Cho ô tìm kiếm mã phòng)
+    socket.on('check-room-exists', (id) => {
+        const room = allRooms[id];
+        if (room) {
+            socket.emit('room-exists-status', { 
+                exists: true, 
+                id: id, 
+                hasPass: room.pass !== "" 
+            });
+        } else {
+            socket.emit('room-exists-status', { exists: false, id: id });
+        }
+    });
 
-    // 1. Xử lý Tạo phòng mới
+    // 2. Xử lý Tạo phòng mới
     socket.on('create-room', (data) => {
         const { roomID, roomName, roomPass, roomLimit, username } = data;
-
+        
         if (allRooms[roomID]) {
             return socket.emit('error-msg', 'Mã phòng này đã tồn tại!');
         }
 
         socket.username = username || "Ẩn danh";
-
-        // Thêm phòng mới vào danh sách
         allRooms[roomID] = {
-            name: roomName,
-            pass: roomPass,
+            name: roomName || "Phòng bí mật",
+            pass: roomPass || "",
             limit: parseInt(roomLimit) || 10,
             owner: socket.id,
             users: []
         };
 
-        // Báo cho người tạo biết đã tạo xong để họ tự động Join
         socket.emit('create-success', roomID);
-        // Cập nhật danh sách cho tất cả mọi người ở sảnh
-        io.emit('update-room-list', allRooms);
     });
 
-    // 2. Xử lý Vào phòng
+    // 3. Xử lý Vào phòng
     socket.on('join-room', (data) => {
         const { roomID, pass, username } = data;
         const room = allRooms[roomID];
 
         if (!room) return socket.emit('error-msg', 'Phòng không tồn tại!');
-        if (room.pass !== "" && room.pass !== pass) return socket.emit('error-msg', 'Sai mật khẩu phòng!');
-        if (room.users.length >= room.limit) return socket.emit('error-msg', 'Phòng đã đầy người!');
+        if (room.pass !== "" && room.pass !== pass) return socket.emit('error-msg', 'Sai mật khẩu!');
+        if (room.users.length >= room.limit) return socket.emit('error-msg', 'Phòng đầy!');
 
-        // Thiết lập thông tin socket
         socket.username = username || "Ẩn danh";
         socket.currentRoom = roomID;
-        
         socket.join(roomID);
-        room.users.push(socket.id);
-
-        socket.emit('login-success', { name: socket.username, roomName: room.name });
         
-        // Thông báo cho mọi người trong phòng
-        io.to(roomID).emit('system-message', `${socket.username} đã tham gia phòng`);
-        // Cập nhật lại sĩ số phòng cho những người ngoài sảnh
-        io.emit('update-room-list', allRooms);
+        // Thêm user vào danh sách nếu chưa có
+        if (!room.users.includes(socket.id)) {
+            room.users.push(socket.id);
+        }
+
+        socket.emit('login-success', { 
+            name: socket.username, 
+            roomName: room.name 
+        });
+
+        io.to(roomID).emit('system-message', `${socket.username} đã tham gia.`);
     });
 
-    // 3. Xử lý Chat (Dùng roomID động)
+    // 4. Xử lý Chat
     socket.on('send-chat', (message) => {
         if (socket.currentRoom) {
             io.to(socket.currentRoom).emit('chat-message', {
@@ -82,39 +98,33 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 4. Xử lý Soạn tin (Dùng roomID động)
+    // 5. Thông báo đang gõ
     socket.on('typing', () => {
-        if (socket.currentRoom) {
-            socket.to(socket.currentRoom).emit('display-typing', { user: socket.username });
-        }
+        if (socket.currentRoom) socket.to(socket.currentRoom).emit('display-typing', { user: socket.username });
     });
 
     socket.on('stop-typing', () => {
-        if (socket.currentRoom) {
-            socket.to(socket.currentRoom).emit('hide-typing');
-        }
+        if (socket.currentRoom) socket.to(socket.currentRoom).emit('hide-typing');
     });
 
-    // 5. Xử lý Thoát và Dọn dẹp phòng trống
+    // 6. Xử lý Thoát
     socket.on('disconnect', () => {
         const roomID = socket.currentRoom;
         if (roomID && allRooms[roomID]) {
             const room = allRooms[roomID];
             room.users = room.users.filter(id => id !== socket.id);
+            io.to(roomID).emit('system-message', `${socket.username} đã rời phòng.`);
 
-            io.to(roomID).emit('system-message', `${socket.username} đã rời phòng`);
-
-            // Nếu phòng không phải Sảnh Chung và không còn ai -> Xóa phòng
-            if (room.users.length === 0 && roomID !== "sanh-chung") {
+            // Chỉ xóa phòng nếu không phải Sảnh chung hoặc Phòng 36
+            if (room.users.length === 0 && roomID !== "sanh-chung" && roomID !== "36") {
                 delete allRooms[roomID];
             }
-
-            io.emit('update-room-list', allRooms);
         }
     });
 });
 
+// Cấu hình Port cho Render
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-    console.log('Server Lobby dang chay tai port: ' + PORT);
+    console.log('Server dang chay tai port: ' + PORT);
 });

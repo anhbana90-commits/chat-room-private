@@ -112,6 +112,17 @@ io.on('connection', (socket) => {
             io.emit('update-room-list', allRooms);
         }
     });
+    socket.on('check-room-exists', (id) => {
+    const room = allRooms[id]; // allRooms là cái Object chứa danh sách phòng
+    if (room) {
+        socket.emit('room-exists-status', { 
+            exists: true, 
+            id: id, 
+            hasPass: room.pass !== "" 
+        });
+    } else {
+        socket.emit('room-exists-status', { exists: false });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
